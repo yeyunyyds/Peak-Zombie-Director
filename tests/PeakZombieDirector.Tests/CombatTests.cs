@@ -14,4 +14,9 @@ public sealed class CombatTests
     [Theory] [InlineData(Difficulty.Easy)] [InlineData(Difficulty.Normal)] [InlineData(Difficulty.Advanced)] [InlineData(Difficulty.Expert)]
     public void PresetsShareCombatTuningAndRoundtrip(Difficulty d)
     {var c=ConfigCodec.Decode(ConfigCodec.Encode(DifficultyPresets.Get(d)));Assert.Equal(3,c.AttackRange);Assert.Equal(.1,CombatTuning.Injury(c),6);Assert.Equal(.15,c.AttackInterval);}
+    [Theory] [InlineData(1.8,0,true)] [InlineData(2,0,true)] [InlineData(3,0,false)] [InlineData(9,0,false)] [InlineData(0,2,false)]
+    public void PhysicalGuardRejectsFarAndHighTargetsDespiteLegacyRange(double x,double y,bool expected)
+    {var c=new DirectorConfig{AttackRange=10};Assert.Equal(expected,CombatTuning.CanCommitLunge(c,new Position(0,0,0),new Position(x,y,0)));}
+    [Fact] public void PhysicalGuardRespectsShorterUserRangeAndInvalidCoordinates()
+    {var c=new DirectorConfig{AttackRange=1};Assert.False(CombatTuning.CanCommitLunge(c,new Position(0,0,0),new Position(1.5,0,0)));Assert.False(CombatTuning.CanCommitLunge(c,new Position(0,0,0),new Position(double.NaN,0,0)));}
 }

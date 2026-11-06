@@ -1,6 +1,6 @@
 # PEAK Zombie Director
 
-PEAK / BepInEx 的房主导演附加 Mod，依赖 **tony4twenty PEAK Zombies 2.0.0**。这是尚待实机验收的 **0.1.3 实验版本**；已针对实际程序集构建，不包含伪造的游戏 API。构建和模拟测试不代表游戏、多人与 UI 验收通过。
+PEAK / BepInEx 的房主导演附加 Mod，依赖 **tony4twenty PEAK Zombies 2.0.0**。这是尚待实机验收的 **0.1.4 实验版本**；已针对实际程序集构建，不包含伪造的游戏 API。构建和模拟测试不代表游戏、多人与 UI 验收通过。
 
 ## 安装和使用
 
@@ -38,7 +38,7 @@ bash scripts/test.sh
 python3 scripts/package.py
 ```
 
-输出：`src/PeakZombieDirector.Plugin/bin/Release/netstandard2.1/PEAKZombieDirector.dll`，另需同目录的核心 DLL。安装压缩包：`artifacts/PEAK_Zombie_Director-0.1.3.zip`。
+输出：`src/PeakZombieDirector.Plugin/bin/Release/netstandard2.1/PEAKZombieDirector.dll`，另需同目录的核心 DLL。安装压缩包：`artifacts/PEAK_Zombie_Director-0.1.4.zip`。
 
 云环境可运行 `bash scripts/setup-cloud.sh`。脚本只在仓库外准备工具和参考 DLL，以固定版本、TLS 和校验和下载公开资源，不会把游戏 DLL 或依赖 Mod DLL 打进发布包。云环境参考 DLL 来自 ShootZombies 固定提交，属于编译兼容性证据；最终发布前须用自己当前安装的合法游戏程序集重新构建并实测。
 
@@ -76,3 +76,11 @@ API 证据、依赖来源、版本与许可证说明见 [依赖研究](docs/DEPE
 深色面板与青绿色重点色、统一字号/间距、圆角导航与参数卡片；总览使用存活/波次/倒计时卡片，难度使用独立预设卡片。参数页支持按中文名称或英文键搜索，数字输入与滑块并存，枚举显示中英文可读名称，保存反馈短暂显示。面板按屏幕尺寸缩放并限制超大屏放大比例；布局、字体与点击效果仍待真实游戏验证。关闭与销毁时恢复光标，主题纹理与皮肤随插件销毁释放。
 
 升级只需退出游戏并替换两个 DLL；保留已有配置。0.1.3 不更改玩法参数与用户配置。
+
+## 0.1.4 起跳门限与持续接触
+
+对本导演管理的僵尸，在原版 TryLunge 和 StartLunging 入口重新读取双方物理中心，距离不得超过 min(AttackRange, LungeContactRange)，高度差不得超过 LungeHeightLimit；不依赖距离缓存。新增近身起跳上限默认 2m、高度差默认 1.5m，即使旧配置 AttackRange=10 仍受新上限约束。两项可在属性页调整。仍由游戏决定冲刺、地面、视线等其他条件，不重写移动或给僵尸瞬移/强推力。
+
+在原有咬击触发器对象上加入持续重叠回调，仅当物理触发器实际与本地玩家重叠、处于 Lunging 且原咬击冷却已结束时，再调用同一个原生 OnTriggerEnter（含 PEAK Zombies 补丁）。它复用同一个 lastBitLocalCharacter 时间戳，绝不另写伤害路径或对远处玩家范围扣血。回调异常会禁用该转发组件并写错误。
+
+启动记录 Combat settings；成功起跳记录 Lunge started 与实际物理距离（最多每 5 秒一条）；原生流程走到命中回调记录 Bite contact confirmed。这能辅助区分起跳、接触与伤害流程，不证明最终伤害已实机生效。**持续空扑/无伤害尚未在真实游戏中验证解决。** 升级替换两个 DLL，所有联机玩家同版本。若仍有问题，请提供本版本复现后的 LogOutput.log 和 PEAKZombieDirector.cfg，保留现有配置不要先删档。

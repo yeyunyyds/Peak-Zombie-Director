@@ -47,6 +47,8 @@ public sealed class DirectorConfig
     [Setting("Attributes", "扑击恢复间隔倍率", .1, 10, "×")] public double AttackInterval { get; set; } = .15;
     [Setting("Attributes", "追击感知距离", 1, 500, "m")] public double Awareness { get; set; } = 100;
     [Setting("Attributes", "扑击触发范围", 1, 30, "m")] public double AttackRange { get; set; } = 3;
+    [Setting("Attributes", "近身起跳距离上限", .5, 5, "m")] public double LungeContactRange { get; set; } = 2;
+    [Setting("Attributes", "起跳允许高度差", .2, 5, "m")] public double LungeHeightLimit { get; set; } = 1.5;
     [Setting("Attributes", "扑击落地倒地时间", 0, 10, "s")] public double LungeStumble { get; set; } = .75;
     [Setting("Attributes", "命中后僵尸倒地时间", 0, 10, "s")] public double BiteSelfStumble { get; set; } = .75;
     [Setting("Attributes", "同一僵尸咬击冷却", .1, 30, "s")] public double BiteCooldown { get; set; } = 1.5;

@@ -13,7 +13,7 @@ namespace PeakZombieDirector;
 [BepInDependency("tony4twenty.PEAK_Zombies","2.0.0")]
 public sealed class Plugin : BaseUnityPlugin
 {
-    public const string Guid="yeyunyyds.PEAKZombieDirector",Version="0.1.3";
+    public const string Guid="yeyunyyds.PEAKZombieDirector",Version="0.1.4";
     internal static Plugin? Instance;
     internal readonly ZombieDirector Director=new();
     internal ConfigStore Store=null!;
@@ -34,12 +34,14 @@ public sealed class Plugin : BaseUnityPlugin
     Room? room;
     int host;
     long reportedReplacements;
+    float nextCombatReport;
     const byte SyncEvent=184;
     void Awake()
     {
         Instance=this;
         Store=new ConfigStore(Path.Combine(Paths.ConfigPath,"PEAKZombieDirector.cfg"),key=>Logger.LogWarning("Corrected invalid setting: "+key));
         World.ReportUnexpectedRemoval=message=>Logger.LogWarning(message);
+        Logger.LogInfo($"Combat settings: AttackRange={Store.State.Active.AttackRange}, contactLimit={Store.State.Active.LungeContactRange}, injury={CombatTuning.Injury(Store.State.Active):F3}, spores={CombatTuning.Spores(Store.State.Active):F3}");
         Panel=new SettingsUI(this);
         harmony=new Harmony(Guid); harmony.PatchAll(typeof(Plugin).Assembly);
         PhotonNetwork.NetworkingClient.EventReceived+=OnPhotonEvent;
@@ -104,6 +106,15 @@ public sealed class Plugin : BaseUnityPlugin
         RemoteElapsed=snapshot.Elapsed; RemoteNext=snapshot.NextWave; Status=snapshot.Status;
     }
 
+    internal void ReportContactFailure(Exception error)=>Logger.LogError("Bite overlap relay disabled after callback failure: "+error);
+    internal void ReportLunge(MushroomZombie zombie)
+    {
+        if(!World.IsManaged(zombie) || Time.realtimeSinceStartup<nextCombatReport) return;
+        nextCombatReport=Time.realtimeSinceStartup+5;
+        var target=zombie.currentTarget;
+        var distance=target==null?-1:Vector3.Distance(zombie.GetComponent<Character>().Center,target.Center);
+        Logger.LogInfo($"Lunge started: zombie={zombie.photonView.ViewID}, physicalDistance={distance:F2}m, injury={zombie.biteInitialInjury:F3}, spores={zombie.biteInitialSpores:F3}. Waiting for physical bite contact.");
+    }
     internal void ReportBite(MushroomZombie zombie,Character victim)
     {
         if(victim!=null && victim.IsLocal && World.IsManaged(zombie))

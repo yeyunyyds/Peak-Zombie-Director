@@ -57,3 +57,9 @@ BepInEx/Harmony 为外部运行依赖；包不重新分发这两者。依赖版�
 核实依赖 `DoLunging` postfix 在进入 LungeRecovery 时设置 `character.data.fallSeconds=LungeStumbleSeconds`；`OnBitCharacter` postfix 设置 `BiteSelfStumbleSeconds`。原版 `DoLungeRecovery` 仅在倒地/昏迷结束后累加恢复时间，故倒地与恢复叠加。现在桥接 `Combat/LungeStumbleSeconds`、`BiteSelfStumbleSeconds`、`BiteTriggerCooldown`。
 
 依赖 `MushroomZombieBiteCollider.OnTriggerEnter` 要求碰撞对象属于本地玩家，在冷却后施加 `biteInitialInjury`、`biteInitialSpores`、后续咬击 Affliction，再调用 `OnBitCharacter`。0.1.2 对初始伤害使用明确的百分比设置，不依赖原型伤害缓存；客户端也接收实例字段与咬击冷却。新增的 `OnBitCharacter` postfix 只写真实接触诊断日志，不增加额外伤害，也不替换碰撞判定。
+
+### 0.1.4 Harmony 与回调补充
+
+从本次实际编译引用的 Assembly-CSharp.dll 重新检查 TryLunge、StartLunging、MushroomZombieBiteCollider.OnTriggerEnter。游戏公共 API 不提供起跳前的外部距离约束，故在前两项增加仅限本导演对象、房主的准入 prefix，保留原生移动/视线/地面判断。
+
+原生咬击只有 OnTriggerEnter，没有公开的接触处理入口。持续重叠转发组件在实际 OnTriggerStay 条件下通过缓存 MethodInfo 调用同一私有 OnTriggerEnter，走现有冷却和 PEAK Zombies 补丁；不反编译复制伤害实现、不额外 AddStatus。用于处理已重叠但未产生新 Enter 的接触时机，不能修复根本没有物理接触或其他 Mod 撤销伤害的问题。

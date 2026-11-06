@@ -111,7 +111,25 @@ internal sealed class ZombieApiAdapter : IZombieWorld, IMapSpawnWorld
         z.biteInitialInjury=(float)CombatTuning.Injury(settings); z.biteInitialSpores=(float)CombatTuning.Spores(settings);
         z.lungeRecoveryTime=(float)CombatTuning.Recovery(settings,a[0]);
         z.distanceBeforeChase=(float)settings.Awareness; z.zombieLungeDistance=(float)settings.AttackRange;
+        if(z.biteColliderObject!=null)
+        {
+            foreach(var bite in z.biteColliderObject.GetComponentsInChildren<MushroomZombieBiteCollider>(true))
+            {
+                var relay=bite.GetComponent<BiteContactRelay>();
+                if(relay==null) relay=bite.gameObject.AddComponent<BiteContactRelay>();
+                relay.Bite=bite; relay.Cooldown=(float)settings.BiteCooldown;
+            }
+        }
         z.lifetime=settings.RemoveLifetime?3.1536E9f:(float)settings.Lifetime;
+    }
+    public bool CanCommitLunge(MushroomZombie zombie)
+    {
+        if(!IsHost || !IsManaged(zombie)) return true;
+        var target=zombie.currentTarget;
+        if(target==null || target.data==null || target.data.dead || target.isBot || target.isZombie || (!settings.AttackDowned && target.data.fullyPassedOut)) return false;
+        var center=ZombieCenter(zombie);
+        zombie.distanceToTarget=Vector3.Distance(center,target.Center);
+        return CombatTuning.CanCommitLunge(settings,ToPosition(center),ToPosition(target.Center));
     }
     public bool IsManaged(MushroomZombie zombie)=>zombie!=null && originals.ContainsKey(zombie.photonView.ViewID);
     public bool TryDestroy(int id)

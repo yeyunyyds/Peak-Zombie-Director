@@ -86,3 +86,5 @@
 | BiteSpores | 咬击初始孢子 | 5% | 0–100% |
 
 旧配置的 AttackRange=10 和 AttackInterval=1 不会被强行覆盖。请按需改为 3 和 0.15，或选择预设加载新默认值。
+
+0.1.4 新增：`LungeContactRange`（0.5–5m，默认 2m）与 `LungeHeightLimit`（0.2–5m，默认 1.5m）。实际起跳同时受旧 AttackRange 与新近身上限约束，使用实时三维物理距离；这些参数不会扩大咬击碰撞体或赋予远程伤害。
