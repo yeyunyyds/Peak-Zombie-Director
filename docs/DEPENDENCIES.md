@@ -51,3 +51,9 @@ Harmony 仅用于面板输入隔离：`Character.CanDoInput`、`CursorHandler.Up
 PEAK Zombies 2.0.0 压缩包没有附许可证，manifest 的 website_url 为空。仅检查其公开接口并声明安装依赖；不复制实现、不分发其 DLL。游戏与 Photon/Unity DLL 也不放进本仓库或发布 ZIP。ShootZombies 与 PEAKLib 的 MIT 许可证不能自动授予游戏 DLL 的再分发权。云环境的参考文件只作开发研究；发行者须用自己合法游戏安装的程序集复核兼容性。
 
 BepInEx/Harmony 为外部运行依赖；包不重新分发这两者。依赖版本严格锁定到 2.0.0；新版本须重新检查 API、配置项及生命周期行为后再放开版本支持。
+
+### 0.1.2 战斗适配
+
+核实依赖 `DoLunging` postfix 在进入 LungeRecovery 时设置 `character.data.fallSeconds=LungeStumbleSeconds`；`OnBitCharacter` postfix 设置 `BiteSelfStumbleSeconds`。原版 `DoLungeRecovery` 仅在倒地/昏迷结束后累加恢复时间，故倒地与恢复叠加。现在桥接 `Combat/LungeStumbleSeconds`、`BiteSelfStumbleSeconds`、`BiteTriggerCooldown`。
+
+依赖 `MushroomZombieBiteCollider.OnTriggerEnter` 要求碰撞对象属于本地玩家，在冷却后施加 `biteInitialInjury`、`biteInitialSpores`、后续咬击 Affliction，再调用 `OnBitCharacter`。0.1.2 对初始伤害使用明确的百分比设置，不依赖原型伤害缓存；客户端也接收实例字段与咬击冷却。新增的 `OnBitCharacter` postfix 只写真实接触诊断日志，不增加额外伤害，也不替换碰撞判定。

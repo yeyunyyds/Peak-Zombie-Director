@@ -1,6 +1,6 @@
 # PEAK Zombie Director
 
-PEAK / BepInEx 的房主导演附加 Mod，依赖 **tony4twenty PEAK Zombies 2.0.0**。这是尚待实机验收的 **0.1.1 实验版本**；已针对实际程序集构建，不包含伪造的游戏 API。构建和模拟测试不代表游戏、多人与 UI 验收通过。
+PEAK / BepInEx 的房主导演附加 Mod，依赖 **tony4twenty PEAK Zombies 2.0.0**。这是尚待实机验收的 **0.1.2 实验版本**；已针对实际程序集构建，不包含伪造的游戏 API。构建和模拟测试不代表游戏、多人与 UI 验收通过。
 
 ## 安装和使用
 
@@ -38,7 +38,7 @@ bash scripts/test.sh
 python3 scripts/package.py
 ```
 
-输出：`src/PeakZombieDirector.Plugin/bin/Release/netstandard2.1/PEAKZombieDirector.dll`，另需同目录的核心 DLL。安装压缩包：`artifacts/PEAK_Zombie_Director-0.1.1.zip`。
+输出：`src/PeakZombieDirector.Plugin/bin/Release/netstandard2.1/PEAKZombieDirector.dll`，另需同目录的核心 DLL。安装压缩包：`artifacts/PEAK_Zombie_Director-0.1.2.zip`。
 
 云环境可运行 `bash scripts/setup-cloud.sh`。脚本只在仓库外准备工具和参考 DLL，以固定版本、TLS 和校验和下载公开资源，不会把游戏 DLL 或依赖 Mod DLL 打进发布包。云环境参考 DLL 来自 ShootZombies 固定提交，属于编译兼容性证据；最终发布前须用自己当前安装的合法游戏程序集重新构建并实测。
 
@@ -62,3 +62,11 @@ API 证据、依赖来源、版本与许可证说明见 [依赖研究](docs/DEPE
 - 每次导演更新续锁目标；先唤醒再设置目标，避免依赖的 SnapChase 覆盖导演锁定时长。
 - 增加超距/卡住替换分类日志，以及对象外部销毁/进入 Dead 状态与存活时间的警告，帮助定位短时间成批消失。
 - 用户报告的实际扑击和死亡行为仍需日志与复测确认；本次未将修改宣称为已实机验证。
+
+## 0.1.2 扑击与命中调整
+
+默认扑击触发范围从 10m 改为 3m，扑击恢复间隔倍率从 1 改为 0.15（原型恢复 5s 时为 0.75s）。新增扑击落地倒地时间 0.75s、命中后僵尸倒地时间 0.75s、同一僵尸咬击冷却 1.5s；这三个值通过已核实的 PEAK Zombies Combat 配置控制。落地倒地与起身恢复仍是两个独立阶段。
+
+新增明确的咬击初始受伤 10%、孢子 5%，再乘伤害倍率并限制每项最大为 100%，不再依赖预制体初始伤害是否为零。沿用真实碰撞触发器，不提供空扑时自动范围扣血；孢子后续效果仍由原版负责。实际命中本地玩家时记录 `Bite contact confirmed`，可区分没碰到和已走伤害流程，但日志本身不证明最终状态被其他 Mod/游戏模式保留。
+
+**已有配置保留原值。** 升级后请把“扑击触发范围”改为 **3**、“扑击恢复间隔倍率”改为 **0.15**；也可重新选择预设加载新默认值（会重置当前活动参数，先保存 Custom）。新加入的参数缺失时自动使用以上默认值。多人所有人须升级到相同版本。当前没有实机确认伤害/命中效果。

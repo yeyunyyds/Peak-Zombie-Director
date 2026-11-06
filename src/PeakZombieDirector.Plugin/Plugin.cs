@@ -13,7 +13,7 @@ namespace PeakZombieDirector;
 [BepInDependency("tony4twenty.PEAK_Zombies","2.0.0")]
 public sealed class Plugin : BaseUnityPlugin
 {
-    public const string Guid="yeyunyyds.PEAKZombieDirector",Version="0.1.1";
+    public const string Guid="yeyunyyds.PEAKZombieDirector",Version="0.1.2";
     internal static Plugin? Instance;
     internal readonly ZombieDirector Director=new();
     internal ConfigStore Store=null!;
@@ -104,6 +104,11 @@ public sealed class Plugin : BaseUnityPlugin
         RemoteElapsed=snapshot.Elapsed; RemoteNext=snapshot.NextWave; Status=snapshot.Status;
     }
 
+    internal void ReportBite(MushroomZombie zombie,Character victim)
+    {
+        if(victim!=null && victim.IsLocal && World.IsManaged(zombie))
+            Logger.LogInfo($"Bite contact confirmed: zombie={zombie.photonView.ViewID}, injury={zombie.biteInitialInjury:F3}, spores={zombie.biteInitialSpores:F3}. Existing game/dependency collider applied the bite; Director adds no duplicate damage.");
+    }
     internal void Changed()
     {
         Store.Save(); nextSync=0;
@@ -140,4 +145,11 @@ internal static class PanelBlocking
 internal static class PanelShowingCursor
 {
     static void Postfix(ref bool __result) { if(Plugin.Instance?.Panel?.Open==true) __result=true; }
+}
+
+[HarmonyPatch(typeof(MushroomZombie),"OnBitCharacter")]
+internal static class BiteContactDiagnostics
+{
+    // Actual game argument is named c; positional binding also tolerates renames.
+    static void Postfix(MushroomZombie __instance,Character __0) => Plugin.Instance?.ReportBite(__instance,__0);
 }

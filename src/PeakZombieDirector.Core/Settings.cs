@@ -44,9 +44,14 @@ public sealed class DirectorConfig
     [Setting("Attributes", "跳跃倍率", 0, 10, "×")] public double Jump { get; set; } = 1;
     [Setting("Attributes", "扑击速度倍率", 0, 10, "×")] public double Lunge { get; set; } = 1;
     [Setting("Attributes", "咬击伤害倍率", 0, 10, "×")] public double Damage { get; set; } = 1;
-    [Setting("Attributes", "扑击恢复间隔倍率", .1, 10, "×")] public double AttackInterval { get; set; } = 1;
+    [Setting("Attributes", "扑击恢复间隔倍率", .1, 10, "×")] public double AttackInterval { get; set; } = .15;
     [Setting("Attributes", "追击感知距离", 1, 500, "m")] public double Awareness { get; set; } = 100;
-    [Setting("Attributes", "扑击触发范围", 1, 30, "m")] public double AttackRange { get; set; } = 10;
+    [Setting("Attributes", "扑击触发范围", 1, 30, "m")] public double AttackRange { get; set; } = 3;
+    [Setting("Attributes", "扑击落地倒地时间", 0, 10, "s")] public double LungeStumble { get; set; } = .75;
+    [Setting("Attributes", "命中后僵尸倒地时间", 0, 10, "s")] public double BiteSelfStumble { get; set; } = .75;
+    [Setting("Attributes", "同一僵尸咬击冷却", .1, 30, "s")] public double BiteCooldown { get; set; } = 1.5;
+    [Setting("Attributes", "咬击初始受伤（再乘伤害倍率）", 0, 100, "%")] public double BiteInjury { get; set; } = 10;
+    [Setting("Attributes", "咬击初始孢子（再乘伤害倍率）", 0, 100, "%")] public double BiteSpores { get; set; } = 5;
     [Setting("Attributes", "禁用寿命限制")] public bool RemoveLifetime { get; set; } = true;
     [Setting("Attributes", "生命持续时间", 1, 86400, "s")] public double Lifetime { get; set; } = 120;
     [Setting("Attributes", "忽略远距离清理")] public bool NeverCull { get; set; } = true;

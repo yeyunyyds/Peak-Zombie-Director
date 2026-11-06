@@ -17,6 +17,7 @@ internal sealed class ZombieApiAdapter : IZombieWorld, IMapSpawnWorld
     readonly Dictionary<int,float> born=new();
     bool acquired;
     bool priorAutoSave;
+    bool configBorrowed;
     public bool IsHost => PhotonNetwork.InRoom && PhotonNetwork.IsMasterClient;
     public bool IsPlayable => IsHost && ZombiesApi.IsReady && !ZombiesApi.InAirport && MapHandler.Instance!=null && (settings.AllBiomes || MapHandler.GetBiomeForSegment((int)MapHandler.CurrentSegmentNumber)==Biome.BiomeType.Roots);
     public bool Ready => ZombiesApi.IsReady && ZombiesApi.Version=="2.0.0";
@@ -46,11 +47,18 @@ internal sealed class ZombieApiAdapter : IZombieWorld, IMapSpawnWorld
         if(!prior.ContainsKey(entry)) prior[entry]=entry.BoxedValue;
         if(!Equals(entry.BoxedValue,value)) entry.BoxedValue=value;
     }
+    void BorrowConfig()
+    {
+        if(configBorrowed) return;
+        var file=Chainloader.PluginInfos[ZombiesApi.PluginGuid].Instance.Config;
+        priorAutoSave=file.SaveOnConfigSet; file.SaveOnConfigSet=false; configBorrowed=true;
+    }
     public void Acquire(DirectorConfig c)
     {
         if(!acquired && ZombiesApi.DirectorActive) throw new InvalidOperationException("Another zombie director is active");
         if(!Ready) throw new InvalidOperationException("Requires PEAK Zombies API 2.0.0");
-        if(!acquired) { var file=Chainloader.PluginInfos[ZombiesApi.PluginGuid].Instance.Config; priorAutoSave=file.SaveOnConfigSet; file.SaveOnConfigSet=false; ZombiesApi.BeginDirector(); acquired=true; }
+        BorrowConfig();
+        if(!acquired) { ZombiesApi.BeginDirector(); acquired=true; }
         Override("Around Players","Enabled",false);
         Override("Vanilla Style","Enabled",false);
         Override("General","DisableZombies",false);
@@ -59,6 +67,9 @@ internal sealed class ZombieApiAdapter : IZombieWorld, IMapSpawnWorld
         Override("Zombie Behavior","RemoveZombieLifetime",c.RemoveLifetime);
         Override("Zombie Behavior","ZombieLifetimeOverride",(float)c.Lifetime);
         Override("Zombie Behavior","AttackUnconsciousPlayers",c.AttackDowned);
+        Override("Combat","LungeStumbleSeconds",(float)c.LungeStumble);
+        Override("Combat","BiteSelfStumbleSeconds",(float)c.BiteSelfStumble);
+        Override("Combat","BiteTriggerCooldown",(float)c.BiteCooldown);
         string[] names={"WalkSpeedMultiplier","SprintSpeedMultiplier","ClimbSpeedMultiplier","JumpImpulseMultiplier","LungeSpeedMultiplier"};
         double[] values={c.Walk,c.Sprint,c.Climb,c.Jump,c.Lunge};
         for(int i=0;i<names.Length;i++) Override("Zombie Stats",names[i],(float)values[i]);
@@ -69,7 +80,8 @@ internal sealed class ZombieApiAdapter : IZombieWorld, IMapSpawnWorld
         try { if(cleanup && IsHost) foreach(var z in owned.Values.ToArray()) if(z!=null && !ZombiesApi.Destroy(z)) throw new InvalidOperationException("Failed to clean up director zombie"); }
         finally
         {
-            if(acquired) { foreach(var p in prior) p.Key.BoxedValue=p.Value; prior.Clear(); Chainloader.PluginInfos[ZombiesApi.PluginGuid].Instance.Config.SaveOnConfigSet=priorAutoSave; ZombiesApi.EndDirector(); acquired=false; }
+            if(configBorrowed) { foreach(var p in prior) p.Key.BoxedValue=p.Value; prior.Clear(); Chainloader.PluginInfos[ZombiesApi.PluginGuid].Instance.Config.SaveOnConfigSet=priorAutoSave; configBorrowed=false; }
+            if(acquired) { ZombiesApi.EndDirector(); acquired=false; }
         }
         owned.Clear(); originals.Clear(); players.Clear(); born.Clear();
     }
@@ -77,6 +89,9 @@ internal sealed class ZombieApiAdapter : IZombieWorld, IMapSpawnWorld
     {
         if(IsHost) return;
         settings=config;
+        // The bite trigger runs on the victim's client. Its cooldown must agree
+        // with the host while spawning and AI remain exclusively host-owned.
+        BorrowConfig(); Override("Combat","BiteTriggerCooldown",(float)config.BiteCooldown);
         var desired=new HashSet<int>(ids);
         foreach(var zombie in ZombiesApi.GetAlive()) if(zombie!=null && desired.Contains(zombie.photonView.ViewID)) ApplyZombie(zombie);
         foreach(var id in originals.Keys.Where(id=>!desired.Contains(id)).ToArray()) originals.Remove(id);
@@ -92,12 +107,13 @@ internal sealed class ZombieApiAdapter : IZombieWorld, IMapSpawnWorld
     {
         if(z==null) return;
         int id=z.photonView.ViewID;
-        if(!originals.TryGetValue(id,out var a)) originals[id]=a=new[]{z.biteInitialInjury,z.biteInitialSpores,z.lungeRecoveryTime};
-        z.biteInitialInjury=a[0]*(float)settings.Damage; z.biteInitialSpores=a[1]*(float)settings.Damage;
-        z.lungeRecoveryTime=a[2]*(float)settings.AttackInterval;
+        if(!originals.TryGetValue(id,out var a)) originals[id]=a=new[]{z.lungeRecoveryTime};
+        z.biteInitialInjury=(float)CombatTuning.Injury(settings); z.biteInitialSpores=(float)CombatTuning.Spores(settings);
+        z.lungeRecoveryTime=(float)CombatTuning.Recovery(settings,a[0]);
         z.distanceBeforeChase=(float)settings.Awareness; z.zombieLungeDistance=(float)settings.AttackRange;
         z.lifetime=settings.RemoveLifetime?3.1536E9f:(float)settings.Lifetime;
     }
+    public bool IsManaged(MushroomZombie zombie)=>zombie!=null && originals.ContainsKey(zombie.photonView.ViewID);
     public bool TryDestroy(int id)
     {
         if(!IsHost || !owned.TryGetValue(id,out var z)) return false;

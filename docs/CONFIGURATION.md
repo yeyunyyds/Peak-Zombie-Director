@@ -29,9 +29,9 @@
 | Attributes | Jump | 跳跃倍率 | double | 1 | 0, 10, × |
 | Attributes | Lunge | 扑击速度倍率 | double | 1 | 0, 10, × |
 | Attributes | Damage | 咬击伤害倍率 | double | 1 | 0, 10, × |
-| Attributes | AttackInterval | 扑击恢复间隔倍率 | double | 1 | .1, 10, × |
+| Attributes | AttackInterval | 扑击恢复间隔倍率 | double | .15 | .1, 10, × |
 | Attributes | Awareness | 追击感知距离 | double | 100 | 1, 500, m |
-| Attributes | AttackRange | 扑击触发范围 | double | 10 | 1, 30, m |
+| Attributes | AttackRange | 扑击触发范围 | double | 3 | 1, 30, m |
 | Attributes | RemoveLifetime | 禁用寿命限制 | bool | true |  |
 | Attributes | Lifetime | 生命持续时间 | double | 120 | 1, 86400, s |
 | Attributes | NeverCull | 忽略远距离清理 | bool | true |  |
@@ -74,3 +74,15 @@
 | Expert | 12 | 4 | 10 | 40 | 1.8 | 65 | 90 | 2 |
 
 其余参数均从完整 Normal 默认配置复制，任何预设不隐藏参数。`Saved Custom` 区域是单独存档，活动编辑自动保存但只有“保存 Custom”覆盖它。`Interface` 保存本机 Chinese 与 Hotkey，`Difficulty` 保存当前档位和是否有未保存的 Custom 编辑。
+
+0.1.2 新增 Attributes 参数（自动持久化并显示在 UI）：
+
+| 键 | 含义 | 默认 | 范围 |
+|---|---|---:|---|
+| LungeStumble | 扑击落地倒地时间 | 0.75s | 0–10s |
+| BiteSelfStumble | 命中后僵尸倒地时间 | 0.75s | 0–10s |
+| BiteCooldown | 同一僵尸咬击冷却 | 1.5s | 0.1–30s |
+| BiteInjury | 咬击初始受伤 | 10% | 0–100% |
+| BiteSpores | 咬击初始孢子 | 5% | 0–100% |
+
+旧配置的 AttackRange=10 和 AttackInterval=1 不会被强行覆盖。请按需改为 3 和 0.15，或选择预设加载新默认值。
