@@ -13,7 +13,7 @@ namespace PeakZombieDirector;
 [BepInDependency("tony4twenty.PEAK_Zombies","2.0.0")]
 public sealed class Plugin : BaseUnityPlugin
 {
-    public const string Guid="yeyunyyds.PEAKZombieDirector",Version="0.1.2";
+    public const string Guid="yeyunyyds.PEAKZombieDirector",Version="0.1.3";
     internal static Plugin? Instance;
     internal readonly ZombieDirector Director=new();
     internal ConfigStore Store=null!;
@@ -120,7 +120,7 @@ public sealed class Plugin : BaseUnityPlugin
         PhotonNetwork.NetworkingClient.EventReceived-=OnPhotonEvent;
         SceneManager.activeSceneChanged-=OnSceneChanged;
         try { Stop(true); } catch(Exception e) { Logger.LogError(e); }
-        Panel?.Close(); harmony?.UnpatchSelf(); Instance=null;
+        Panel?.Dispose(); harmony?.UnpatchSelf(); Instance=null;
     }
 }
 [HarmonyPatch(typeof(Character),"CanDoInput")]
