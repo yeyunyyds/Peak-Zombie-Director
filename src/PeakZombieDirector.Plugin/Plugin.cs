@@ -13,12 +13,13 @@ namespace PeakZombieDirector;
 [BepInDependency("tony4twenty.PEAK_Zombies","2.0.0")]
 public sealed class Plugin : BaseUnityPlugin
 {
-    public const string Guid="yeyunyyds.PEAKZombieDirector",Version="0.1.4";
+    public const string Guid="yeyunyyds.PEAKZombieDirector",Version="0.1.5";
     internal static Plugin? Instance;
     internal readonly ZombieDirector Director=new();
     internal ConfigStore Store=null!;
     internal ZombieApiAdapter World=new();
     internal SettingsUI Panel=null!;
+    internal readonly BiteCompatibility Compatibility=new();
     internal DirectorConfig? Remote;
     internal Difficulty RemoteDifficulty;
     internal string Status="Initializing",Error="";
@@ -43,7 +44,7 @@ public sealed class Plugin : BaseUnityPlugin
         World.ReportUnexpectedRemoval=message=>Logger.LogWarning(message);
         Logger.LogInfo($"Combat settings: AttackRange={Store.State.Active.AttackRange}, contactLimit={Store.State.Active.LungeContactRange}, injury={CombatTuning.Injury(Store.State.Active):F3}, spores={CombatTuning.Spores(Store.State.Active):F3}");
         Panel=new SettingsUI(this);
-        harmony=new Harmony(Guid); harmony.PatchAll(typeof(Plugin).Assembly);
+        harmony=new Harmony(Guid); Compatibility.Install(harmony,message=>Logger.LogWarning(message)); harmony.PatchAll(typeof(Plugin).Assembly);
         PhotonNetwork.NetworkingClient.EventReceived+=OnPhotonEvent;
         SceneManager.activeSceneChanged+=OnSceneChanged;
         Logger.LogInfo("PEAK Zombie Director loaded. Ctrl+F8 opens settings. Requires API 2.0.0.");
@@ -131,7 +132,7 @@ public sealed class Plugin : BaseUnityPlugin
         PhotonNetwork.NetworkingClient.EventReceived-=OnPhotonEvent;
         SceneManager.activeSceneChanged-=OnSceneChanged;
         try { Stop(true); } catch(Exception e) { Logger.LogError(e); }
-        Panel?.Dispose(); harmony?.UnpatchSelf(); Instance=null;
+        Panel?.Dispose(); harmony?.UnpatchSelf(); Compatibility.Restore(); Instance=null;
     }
 }
 [HarmonyPatch(typeof(Character),"CanDoInput")]

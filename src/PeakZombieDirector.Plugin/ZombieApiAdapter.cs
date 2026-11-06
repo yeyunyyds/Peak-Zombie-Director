@@ -131,6 +131,7 @@ internal sealed class ZombieApiAdapter : IZombieWorld, IMapSpawnWorld
         zombie.distanceToTarget=Vector3.Distance(center,target.Center);
         return CombatTuning.CanCommitLunge(settings,ToPosition(center),ToPosition(target.Center));
     }
+    public float BiteCooldownFor(MushroomZombie zombie)=>IsManaged(zombie)?(float)settings.BiteCooldown:5f;
     public bool IsManaged(MushroomZombie zombie)=>zombie!=null && originals.ContainsKey(zombie.photonView.ViewID);
     public bool TryDestroy(int id)
     {

@@ -1,6 +1,6 @@
 # PEAK Zombie Director
 
-PEAK / BepInEx 的房主导演附加 Mod，依赖 **tony4twenty PEAK Zombies 2.0.0**。这是尚待实机验收的 **0.1.4 实验版本**；已针对实际程序集构建，不包含伪造的游戏 API。构建和模拟测试不代表游戏、多人与 UI 验收通过。
+PEAK / BepInEx 的房主导演附加 Mod，依赖 **tony4twenty PEAK Zombies 2.0.0**。这是尚待实机验收的 **0.1.5 实验版本**；已针对实际程序集构建，不包含伪造的游戏 API。构建和模拟测试不代表游戏、多人与 UI 验收通过。
 
 ## 安装和使用
 
@@ -38,7 +38,7 @@ bash scripts/test.sh
 python3 scripts/package.py
 ```
 
-输出：`src/PeakZombieDirector.Plugin/bin/Release/netstandard2.1/PEAKZombieDirector.dll`，另需同目录的核心 DLL。安装压缩包：`artifacts/PEAK_Zombie_Director-0.1.4.zip`。
+输出：`src/PeakZombieDirector.Plugin/bin/Release/netstandard2.1/PEAKZombieDirector.dll`，另需同目录的核心 DLL。安装压缩包：`artifacts/PEAK_Zombie_Director-0.1.5.zip`。
 
 云环境可运行 `bash scripts/setup-cloud.sh`。脚本只在仓库外准备工具和参考 DLL，以固定版本、TLS 和校验和下载公开资源，不会把游戏 DLL 或依赖 Mod DLL 打进发布包。云环境参考 DLL 来自 ShootZombies 固定提交，属于编译兼容性证据；最终发布前须用自己当前安装的合法游戏程序集重新构建并实测。
 
@@ -84,3 +84,11 @@ API 证据、依赖来源、版本与许可证说明见 [依赖研究](docs/DEPE
 在原有咬击触发器对象上加入持续重叠回调，仅当物理触发器实际与本地玩家重叠、处于 Lunging 且原咬击冷却已结束时，再调用同一个原生 OnTriggerEnter（含 PEAK Zombies 补丁）。它复用同一个 lastBitLocalCharacter 时间戳，绝不另写伤害路径或对远处玩家范围扣血。回调异常会禁用该转发组件并写错误。
 
 启动记录 Combat settings；成功起跳记录 Lunge started 与实际物理距离（最多每 5 秒一条）；原生流程走到命中回调记录 Bite contact confirmed。这能辅助区分起跳、接触与伤害流程，不证明最终伤害已实机生效。**持续空扑/无伤害尚未在真实游戏中验证解决。** 升级替换两个 DLL，所有联机玩家同版本。若仍有问题，请提供本版本复现后的 LogOutput.log 和 PEAKZombieDirector.cfg，保留现有配置不要先删档。
+
+## 0.1.5 咬击伤害 API 兼容修复
+
+用户的 0.1.4 实机日志确认：伤害配置非零、起跳距离正常，但 PEAK Zombies 2.0 的 BiteColliderPatch.Prefix 引用不存在的六参数 CharacterAfflictions.AddStatus，导致 MissingMethodException。编译参考游戏提供的是五参数 AddStatus，不能靠调整伤害倍率修复此问题。
+
+0.1.5 在启动时检测实际加载游戏是否提供旧六参数 API。缺失时，仅解除依赖 `tony4twenty.ZombiesAnywhere.Patches` 中精确的 BiteColliderPatch.Prefix，恢复**游戏原生咬击回调**；保留其他 Mod 与该依赖的所有其他补丁，不修改任何 DLL。原生伤害调用会使用游戏自己的兼容签名。额外的精确 IL 适配只把已核实的 5 秒咬击冷却常量替换为导演冷却读取，不复制或另行实现伤害。找不到指定补丁不会盲目移除其他补丁；若原生 IL 结构变化会明确报错。插件退出时恢复原补丁。
+
+兼容模式在日志记录 `Bite compatibility enabled`。游戏仍提供六参数旧 API 时不启用这个兼容模式。伤害数值、已有配置和 2 米近身起跳限制均保留。根因已由用户日志确认；修复版尚待实机验收，自动化测试不能证明实际扣血。所有联机玩家需更新两个 DLL。

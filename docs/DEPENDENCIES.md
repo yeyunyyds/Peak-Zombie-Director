@@ -63,3 +63,9 @@ BepInEx/Harmony 为外部运行依赖；包不重新分发这两者。依赖版�
 从本次实际编译引用的 Assembly-CSharp.dll 重新检查 TryLunge、StartLunging、MushroomZombieBiteCollider.OnTriggerEnter。游戏公共 API 不提供起跳前的外部距离约束，故在前两项增加仅限本导演对象、房主的准入 prefix，保留原生移动/视线/地面判断。
 
 原生咬击只有 OnTriggerEnter，没有公开的接触处理入口。持续重叠转发组件在实际 OnTriggerStay 条件下通过缓存 MethodInfo 调用同一私有 OnTriggerEnter，走现有冷却和 PEAK Zombies 补丁；不反编译复制伤害实现、不额外 AddStatus。用于处理已重叠但未产生新 Enter 的接触时机，不能修复根本没有物理接触或其他 Mod 撤销伤害的问题。
+
+### 0.1.5 已确认的伤害 ABI 不兼容
+
+用户实机日志出现 `MissingMethodException: CharacterAfflictions.AddStatus(CharacterAfflictions/STATUSTYPE,single,bool,bool,bool,bool)`，伤害与孢子非零，原生回调被依赖 prefix 阻断。当前实际参考 DLL 确认 AddStatus 是 `(STATUSTYPE,float,bool,bool,bool)` 五参数，原生 OnTriggerEnter 调用匹配本游戏自己的方法。
+
+兼容层不调用有缺失引用的依赖咬击 prefix；只在六参数 API 缺失且通过 Harmony 元数据唯一找到该 owner 与该嵌套类型的 Prefix 时移除这一项，恢复游戏本身实现。其他前后缀/转译器不变。为保留自定义冷却，对原生回调唯一的 5f 常量做精确替换，其余伤害代码完整保留。关闭插件恢复前述单项 prefix 的原 owner、priority、before、after。未验证其他依赖 API 在所有游戏版本中的兼容性。
