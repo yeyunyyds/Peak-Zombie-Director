@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+<PropertyGroup><TargetFramework>netstandard2.1</TargetFramework><AssemblyName>PEAKZombieDirector</AssemblyName><GameManagedDir Condition="'$(GameManagedDir)' == ''">$(PEAK_MANAGED_DIR)</GameManagedDir><ModReferenceDir Condition="'$(ModReferenceDir)' == ''">$(PEAK_MOD_REFERENCE_DIR)</ModReferenceDir></PropertyGroup>
+<ItemGroup><ProjectReference Include="../PeakZombieDirector.Core/PeakZombieDirector.Core.csproj" />
+<Reference Include="BepInEx"><HintPath>$(ModReferenceDir)/BepInEx.dll</HintPath><Private>false</Private></Reference>
+<Reference Include="0Harmony"><HintPath>$(ModReferenceDir)/0Harmony.dll</HintPath><Private>false</Private></Reference>
+<Reference Include="Zombies Anywhere"><HintPath>$(ModReferenceDir)/Zombies Anywhere.dll</HintPath><Private>false</Private></Reference>
+<Reference Include="GameReferences"><HintPath>$(GameManagedDir)/Assembly-CSharp.dll</HintPath><Private>false</Private></Reference>
+<Reference Include="UnityEngine"><HintPath>$(GameManagedDir)/UnityEngine.dll</HintPath><Private>false</Private></Reference>
+<Reference Include="$(GameManagedDir)/UnityEngine.*Module.dll"><Private>false</Private></Reference>
+<Reference Include="$(GameManagedDir)/Photon*.dll"><Private>false</Private></Reference>
+<Reference Include="$(GameManagedDir)/Zorro.Core.Runtime.dll"><Private>false</Private></Reference>
+</ItemGroup>
+<Target Name="CheckReferences" BeforeTargets="ResolveReferences"><Error Condition="!Exists('$(GameManagedDir)/Assembly-CSharp.dll')" Text="Set PEAK_MANAGED_DIR to your PEAK_Data/Managed directory."/><Error Condition="!Exists('$(ModReferenceDir)/Zombies Anywhere.dll')" Text="Set PEAK_MOD_REFERENCE_DIR to BepInEx/Harmony/PEAK Zombies 2.0.0 reference directory."/></Target>
+</Project>

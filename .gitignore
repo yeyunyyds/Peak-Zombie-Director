@@ -1,0 +1,6 @@
+**/bin/
+**/obj/
+artifacts/
+.local/
+*.user
+**/TestResults/

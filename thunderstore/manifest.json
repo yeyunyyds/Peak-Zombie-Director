@@ -1,0 +1,7 @@
+{
+  "name": "PEAK_Zombie_Director",
+  "version_number": "0.1.0",
+  "website_url": "https://github.com/yeyunyyds/Peak-Zombie-Director",
+  "description": "Host-authoritative zombie waves, difficulty presets, pursuit and safe recycling. Experimental; requires PEAK Zombies 2.0.0.",
+  "dependencies": ["BepInEx-BepInExPack_PEAK-5.4.75301", "tony4twenty-PEAK_Zombies-2.0.0"]
+}
