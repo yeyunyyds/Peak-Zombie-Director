@@ -76,4 +76,8 @@ public sealed class DirectorTests
     {var c=Config();c.Waves=false;c.MapSpawns=true;c.NetworkBudget=1;var w=new FakeWorld();w.MapPoints.Add(new(1,new Position(20,0,0)));w.MapPoints.Add(new(2,new Position(25,0,0)));var d=new ZombieDirector();d.Tick(0,c,w);Assert.Equal(1,w.TotalAlive);d.Tick(.5,c,w);Assert.Equal(1,w.TotalAlive);d.Tick(1,c,w);Assert.Equal(2,w.TotalAlive);d.Tick(2,c,w);Assert.Equal(2,w.TotalAlive);}
     [Fact] public void MapSpawnsDoNotBypassCapOrPositionValidation()
     {var c=Config();c.Waves=false;c.MapSpawns=true;c.MaxAlive=1;var w=new FakeWorld{FailSearch=true};w.MapPoints.Add(new(1,new Position(20,0,0)));var d=new ZombieDirector();d.Tick(0,c,w);Assert.Equal(0,w.SpawnCalls);w.FailSearch=false;d.Tick(1,c,w);Assert.Single(w.Zombies);w.MapPoints.Add(new(2,new Position(25,0,0)));d.Tick(2,c,w);Assert.Single(w.Zombies);}
+    [Fact] public void PersistentTargetIsRenewedBetweenSelectionChecks()
+    {var c=Config();c.TargetInterval=30;c.Waves=false;var w=new FakeWorld();w.Zombies[1]=new Position(50,0,0);var d=new ZombieDirector();d.Tick(0,c,w);int calls=w.TargetCalls;d.Tick(.2,c,w);Assert.Equal(calls+1,w.TargetCalls);Assert.Equal(1,w.LastTarget);}
+    [Fact] public void HealthyMovingZombieIsNotRecycledAfterCooldown()
+    {var c=Config();c.Waves=false;c.StuckRecovery=true;var w=new FakeWorld();w.Zombies[1]=new Position(50,0,0);var d=new ZombieDirector();for(int second=0;second<=30;second++){w.Zombies[1]=new Position(50-second,0,0);d.Tick(second,c,w);}Assert.Equal(0,d.Diagnostics.Replaced);Assert.Equal(0,w.DestroyCalls);}
 }

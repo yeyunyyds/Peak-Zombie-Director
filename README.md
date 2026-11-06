@@ -1,6 +1,6 @@
 # PEAK Zombie Director
 
-PEAK / BepInEx 的房主导演附加 Mod，依赖 **tony4twenty PEAK Zombies 2.0.0**。这是尚待实机验收的 **0.1.0 实验版本**；已针对实际程序集构建，不包含伪造的游戏 API。构建和模拟测试不代表游戏、多人与 UI 验收通过。
+PEAK / BepInEx 的房主导演附加 Mod，依赖 **tony4twenty PEAK Zombies 2.0.0**。这是尚待实机验收的 **0.1.1 实验版本**；已针对实际程序集构建，不包含伪造的游戏 API。构建和模拟测试不代表游戏、多人与 UI 验收通过。
 
 ## 安装和使用
 
@@ -38,7 +38,7 @@ bash scripts/test.sh
 python3 scripts/package.py
 ```
 
-输出：`src/PeakZombieDirector.Plugin/bin/Release/netstandard2.1/PEAKZombieDirector.dll`，另需同目录的核心 DLL。安装压缩包：`artifacts/PEAK_Zombie_Director-0.1.0.zip`。
+输出：`src/PeakZombieDirector.Plugin/bin/Release/netstandard2.1/PEAKZombieDirector.dll`，另需同目录的核心 DLL。安装压缩包：`artifacts/PEAK_Zombie_Director-0.1.1.zip`。
 
 云环境可运行 `bash scripts/setup-cloud.sh`。脚本只在仓库外准备工具和参考 DLL，以固定版本、TLS 和校验和下载公开资源，不会把游戏 DLL 或依赖 Mod DLL 打进发布包。云环境参考 DLL 来自 ShootZombies 固定提交，属于编译兼容性证据；最终发布前须用自己当前安装的合法游戏程序集重新构建并实测。
 
@@ -54,3 +54,11 @@ python3 scripts/package.py
 - 房主迁移不转移所有对象/计时状态；安全停止并暂停依赖生成，等待场景变化或新局。没有在本环境验证离线游玩、原版客户端或其他僵尸 Mod 兼容性。
 
 API 证据、依赖来源、版本与许可证说明见 [依赖研究](docs/DEPENDENCIES.md)。参数完整清单见 [配置参考](docs/CONFIGURATION.md)。本仓库代码使用 MIT 许可证，不授予第三方游戏与 Mod 程序集的再分发权。
+
+## 0.1.1 修正
+
+- 位置查询改用角色物理 `Character.Center`（视线起点用 `Head`），修复根节点静止导致的距离/卡住误判与生成位置偏移。
+- 面板输入拦截仅限本地非僵尸玩家，避免影响 AI 输入。
+- 每次导演更新续锁目标；先唤醒再设置目标，避免依赖的 SnapChase 覆盖导演锁定时长。
+- 增加超距/卡住替换分类日志，以及对象外部销毁/进入 Dead 状态与存活时间的警告，帮助定位短时间成批消失。
+- 用户报告的实际扑击和死亡行为仍需日志与复测确认；本次未将修改宣称为已实机验证。

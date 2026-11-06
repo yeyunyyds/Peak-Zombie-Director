@@ -13,7 +13,7 @@ namespace PeakZombieDirector;
 [BepInDependency("tony4twenty.PEAK_Zombies","2.0.0")]
 public sealed class Plugin : BaseUnityPlugin
 {
-    public const string Guid="yeyunyyds.PEAKZombieDirector",Version="0.1.0";
+    public const string Guid="yeyunyyds.PEAKZombieDirector",Version="0.1.1";
     internal static Plugin? Instance;
     internal readonly ZombieDirector Director=new();
     internal ConfigStore Store=null!;
@@ -33,11 +33,13 @@ public sealed class Plugin : BaseUnityPlugin
     double nextTick,nextSync;
     Room? room;
     int host;
+    long reportedReplacements;
     const byte SyncEvent=184;
     void Awake()
     {
         Instance=this;
         Store=new ConfigStore(Path.Combine(Paths.ConfigPath,"PEAKZombieDirector.cfg"),key=>Logger.LogWarning("Corrected invalid setting: "+key));
+        World.ReportUnexpectedRemoval=message=>Logger.LogWarning(message);
         Panel=new SettingsUI(this);
         harmony=new Harmony(Guid); harmony.PatchAll(typeof(Plugin).Assembly);
         PhotonNetwork.NetworkingClient.EventReceived+=OnPhotonEvent;
@@ -69,6 +71,7 @@ public sealed class Plugin : BaseUnityPlugin
             if(!c.Enabled || !World.IsPlayable) { Stop(true); Status=c.Enabled?"Lobby / waiting for climb":"Disabled"; Broadcast(now); return; }
             World.Acquire(c);
             Director.Tick(now,c,World); Status=Director.Diagnostics.Status;
+            if(Director.Diagnostics.Replaced!=reportedReplacements) { reportedReplacements=Director.Diagnostics.Replaced; Logger.LogInfo($"Director replacements: total={reportedReplacements}, far={Director.Diagnostics.FarReplacements}, stuck={Director.Diagnostics.StuckReplacements}"); }
             if(c.Verbose) Logger.LogDebug($"alive={World.TotalAlive}, pending={Director.Pending}, elapsed={Director.Elapsed:F1}");
             Broadcast(now);
         }
@@ -118,7 +121,7 @@ public sealed class Plugin : BaseUnityPlugin
 [HarmonyPatch(typeof(Character),"CanDoInput")]
 internal static class BlockGameInput
 {
-    static void Postfix(ref bool __result) { if(Plugin.Instance?.Panel?.Open==true) __result=false; }
+    static void Postfix(Character __instance,ref bool __result) { if(Plugin.Instance?.Panel?.Open==true && __instance.IsLocal && !__instance.isBot && !__instance.isZombie) __result=false; }
 }
 [HarmonyPatch(typeof(CursorHandler),"Update")]
 internal static class PanelCursor

@@ -13,20 +13,23 @@ internal sealed class ZombieApiAdapter : IZombieWorld, IMapSpawnWorld
     readonly Dictionary<int,float[]> originals=new();
     readonly Dictionary<int,Character> players=new();
     DirectorConfig settings=new();
+    public Action<string>? ReportUnexpectedRemoval;
+    readonly Dictionary<int,float> born=new();
     bool acquired;
     bool priorAutoSave;
     public bool IsHost => PhotonNetwork.InRoom && PhotonNetwork.IsMasterClient;
     public bool IsPlayable => IsHost && ZombiesApi.IsReady && !ZombiesApi.InAirport && MapHandler.Instance!=null && (settings.AllBiomes || MapHandler.GetBiomeForSegment((int)MapHandler.CurrentSegmentNumber)==Biome.BiomeType.Roots);
     public bool Ready => ZombiesApi.IsReady && ZombiesApi.Version=="2.0.0";
     public int TotalAlive => ZombiesApi.AliveCount;
-    public IReadOnlyList<PlayerSnapshot> Players => players.Select(p=>new PlayerSnapshot(p.Key,ToPosition(p.Value.transform.position))).ToArray();
-    public IReadOnlyList<ZombieSnapshot> OwnedZombies => owned.Where(p=>p.Value!=null && p.Value.currentState!=MushroomZombie.State.Dead).Select(p=>new ZombieSnapshot(p.Key,ToPosition(p.Value.transform.position))).ToArray();
+    public IReadOnlyList<PlayerSnapshot> Players => players.Select(p=>new PlayerSnapshot(p.Key,ToPosition(p.Value.Center))).ToArray();
+    public IReadOnlyList<ZombieSnapshot> OwnedZombies => owned.Where(p=>p.Value!=null && p.Value.currentState!=MushroomZombie.State.Dead).Select(p=>new ZombieSnapshot(p.Key,ToPosition(ZombieCenter(p.Value)))).ToArray();
+    static Vector3 ZombieCenter(MushroomZombie z) => z.GetComponent<Character>().Center;
     public static Position ToPosition(Vector3 v)=>new(v.x,v.y,v.z);
     public static Vector3 ToVector(Position p)=>new((float)p.X,(float)p.Y,(float)p.Z);
     public void Refresh(DirectorConfig c)
     {
         settings=c;
-        foreach(var id in owned.Where(p=>p.Value==null || p.Value.currentState==MushroomZombie.State.Dead).Select(p=>p.Key).ToArray()) { owned.Remove(id); originals.Remove(id); }
+        foreach(var id in owned.Where(p=>p.Value==null || p.Value.currentState==MushroomZombie.State.Dead).Select(p=>p.Key).ToArray()) { var z=owned[id]; var age=born.TryGetValue(id,out var birth)?Time.time-birth:-1; ReportUnexpectedRemoval?.Invoke($"Owned zombie {id} left tracking: {(z==null?"object destroyed externally":"AI entered Dead state")}; age={age:F1}s. Director recycling did not remove this object."); owned.Remove(id); originals.Remove(id); born.Remove(id); }
         players.Clear();
         foreach(var ch in Character.AllCharacters)
             if(ch!=null && !ch.isBot && !ch.isZombie && ch.data!=null && !ch.data.dead && !ch.warping && (c.AttackDowned || !ch.data.fullyPassedOut) && ch.photonView!=null && ch.photonView.Owner!=null)
@@ -68,7 +71,7 @@ internal sealed class ZombieApiAdapter : IZombieWorld, IMapSpawnWorld
         {
             if(acquired) { foreach(var p in prior) p.Key.BoxedValue=p.Value; prior.Clear(); Chainloader.PluginInfos[ZombiesApi.PluginGuid].Instance.Config.SaveOnConfigSet=priorAutoSave; ZombiesApi.EndDirector(); acquired=false; }
         }
-        owned.Clear(); originals.Clear(); players.Clear();
+        owned.Clear(); originals.Clear(); players.Clear(); born.Clear();
     }
     public void ApplyReplicas(DirectorConfig config,int[] ids)
     {
@@ -83,7 +86,7 @@ internal sealed class ZombieApiAdapter : IZombieWorld, IMapSpawnWorld
         id=0; if(!IsPlayable) return false;
         var z=ZombiesApi.SpawnAt(ToVector(position),Quaternion.identity,true);
         if(z==null) return false;
-        id=z.photonView.ViewID; owned[id]=z; ApplyZombie(z); return true;
+        id=z.photonView.ViewID; owned[id]=z; born[id]=Time.time; ApplyZombie(z); return true;
     }
     void ApplyZombie(MushroomZombie z)
     {
@@ -93,28 +96,31 @@ internal sealed class ZombieApiAdapter : IZombieWorld, IMapSpawnWorld
         z.biteInitialInjury=a[0]*(float)settings.Damage; z.biteInitialSpores=a[1]*(float)settings.Damage;
         z.lungeRecoveryTime=a[2]*(float)settings.AttackInterval;
         z.distanceBeforeChase=(float)settings.Awareness; z.zombieLungeDistance=(float)settings.AttackRange;
-        z.lifetime=settings.RemoveLifetime?float.MaxValue:(float)settings.Lifetime;
+        z.lifetime=settings.RemoveLifetime?3.1536E9f:(float)settings.Lifetime;
     }
     public bool TryDestroy(int id)
     {
         if(!IsHost || !owned.TryGetValue(id,out var z)) return false;
         if(z!=null && !ZombiesApi.Destroy(z)) return false;
-        owned.Remove(id); originals.Remove(id); return true;
+        owned.Remove(id); originals.Remove(id); born.Remove(id); return true;
     }
     public void Chase(int id,int playerId,double seconds,bool snap)
     {
         if(!IsHost || !owned.TryGetValue(id,out var z) || z==null || !players.TryGetValue(playerId,out var p)) return;
-        ZombiesApi.SetTarget(z,p,(float)seconds); if(snap && z.currentState!=MushroomZombie.State.Chasing && z.currentState!=MushroomZombie.State.Lunging && z.currentState!=MushroomZombie.State.LungeRecovery) ZombiesApi.SnapChase(z);
+        if(snap && z.currentState!=MushroomZombie.State.Chasing && z.currentState!=MushroomZombie.State.Lunging && z.currentState!=MushroomZombie.State.LungeRecovery) ZombiesApi.SnapChase(z);
+        // SnapChase can assign its own nearest target with a one-second lock.
+        // Apply the director selection last, including its full renewal period.
+        ZombiesApi.SetTarget(z,p,(float)seconds);
     }
     public IReadOnlyList<MapSpawnPoint> ReadyMapPoints => ZombieManager.Instance==null?Array.Empty<MapSpawnPoint>():ZombieManager.Instance.spawners
-        .Where(s=>s!=null && s.isActiveAndEnabled && s.spawnedZombie==null && s.mushroomZombiePrefab!=null && players.Values.Any(p=>Vector3.Distance(p.transform.position,s.transform.position)<=s.mushroomZombiePrefab.distanceToEnable))
+        .Where(s=>s!=null && s.isActiveAndEnabled && s.spawnedZombie==null && s.mushroomZombiePrefab!=null && players.Values.Any(p=>Vector3.Distance(p.Center,s.transform.position)<=s.mushroomZombiePrefab.distanceToEnable))
         .Select(s=>new MapSpawnPoint(s.GetInstanceID(),ToPosition(s.transform.position))).ToArray();
     public bool TryValidateMapPoint(Position requested,out Position safe)
     {
         safe=default;var p=ToVector(requested);
         if(!Physics.Raycast(p+Vector3.up*2,Vector3.down,out var hit,5,Physics.DefaultRaycastLayers,QueryTriggerInteraction.Ignore)) return false;
         p=hit.point+Vector3.up*.15f;
-        if(!Finite(p) || !hit.collider.gameObject.scene.IsValid() || !hit.collider.gameObject.scene.isLoaded || Vector3.Angle(hit.normal,Vector3.up)>45 || players.Values.Any(ch=>Vector3.Distance(ch.transform.position,p)<3)) return false;
+        if(!Finite(p) || !hit.collider.gameObject.scene.IsValid() || !hit.collider.gameObject.scene.isLoaded || Vector3.Angle(hit.normal,Vector3.up)>45 || players.Values.Any(ch=>Vector3.Distance(ch.Center,p)<3)) return false;
         if(Physics.CheckCapsule(p+Vector3.up*.5f,p+Vector3.up*1.5f,.4f,Physics.DefaultRaycastLayers,QueryTriggerInteraction.Ignore)) return false;
         safe=ToPosition(p);return true;
     }
@@ -128,18 +134,18 @@ internal sealed class ZombieApiAdapter : IZombieWorld, IMapSpawnWorld
             var direction=c.PreferBehind && i<c.SearchAttempts/2?-target.transform.forward:Vector3.forward;
             direction=Quaternion.AngleAxis(angle*Mathf.Rad2Deg,Vector3.up)*direction;
             if(c.PreferBehind && i<c.SearchAttempts/2 && Vector3.Dot(direction,target.transform.forward)>0) direction=-direction;
-            var sample=target.transform.position+direction*UnityEngine.Random.Range((float)min,(float)max);
+            var sample=target.Center+direction*UnityEngine.Random.Range((float)min,(float)max);
             if(!Physics.Raycast(sample+Vector3.up*20,Vector3.down,out var hit,50,Physics.DefaultRaycastLayers,QueryTriggerInteraction.Ignore)) continue;
             var p=hit.point+Vector3.up*.15f;
             if(!hit.collider.gameObject.scene.IsValid() || !hit.collider.gameObject.scene.isLoaded || Vector3.Angle(hit.normal,Vector3.up)>45 || !Finite(p)) continue;
-            float horizontal=Vector2.Distance(new Vector2(p.x,p.z),new Vector2(target.transform.position.x,target.transform.position.z));
-            if(horizontal<min || horizontal>max || Math.Abs(p.y-target.transform.position.y)>25) continue;
+            float horizontal=Vector2.Distance(new Vector2(p.x,p.z),new Vector2(target.Center.x,target.Center.z));
+            if(horizontal<min || horizontal>max || Math.Abs(p.y-target.Center.y)>25) continue;
             if(Physics.CheckCapsule(p+Vector3.up*.5f,p+Vector3.up*1.5f,.4f,Physics.DefaultRaycastLayers,QueryTriggerInteraction.Ignore)) continue;
-            if(players.Values.Any(ch=>Vector3.Distance(ch.transform.position,p)<3)) continue;
+            if(players.Values.Any(ch=>Vector3.Distance(ch.Center,p)<3)) continue;
             bool visible=false,front=false;
             foreach(var ch in players.Values)
             {
-                var eye=ch.transform.position+Vector3.up*1.6f;
+                var eye=ch.Head;
                 bool line=!Physics.Linecast(eye,p+Vector3.up,Physics.DefaultRaycastLayers,QueryTriggerInteraction.Ignore);
                 bool facing=Vector3.Dot(ch.transform.forward,(p-eye).normalized)>.5f;
                 visible|=line && facing; front|=line && Vector3.Dot(ch.transform.forward,(p-eye).normalized)>.85f;

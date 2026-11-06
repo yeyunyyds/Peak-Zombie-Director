@@ -48,6 +48,7 @@ public static class DifficultyScaler
 }
 public sealed class DirectorDiagnostics
 {
+    public long FarReplacements, StuckReplacements;
     public long Spawned, Replaced, SpawnFailures, SearchFailures, DeleteFailures;
     public double LastMilliseconds;
     public string Status = "Waiting";
@@ -110,8 +111,10 @@ public sealed class ZombieDirector
                 if(target==null || (c.Retarget && c.Target!=TargetMode.PreferOriginal)) target=Select(players,z.Position,c);
                 t.Target=target!.Id;
                 t.NextTarget=now+(existing==null?c.SearchInterval:c.TargetInterval);
-                if(c.Persistent) w.Chase(z.Id,t.Target,Math.Max(c.TargetInterval,c.SearchInterval)+1,true);
             }
+            // Refresh the chosen target even between selection evaluations: Start(),
+            // wake-up and vanilla AI may reset it after the initial spawn call.
+            if(c.Persistent) w.Chase(z.Id,t.Target,Math.Max(c.TargetInterval,c.SearchInterval)+1,true);
         }
         if(now>=nextCheck)
         {
@@ -139,7 +142,7 @@ public sealed class ZombieDirector
                 tracked.Remove(z.Id);
                 tracked[replacement]=new Tracked {Target=target.Id,ProgressPosition=position,ProgressTime=now,NextRecycle=now+c.RecycleCooldown,NextTarget=now+c.TargetInterval};
                 if(c.Persistent) w.Chase(replacement,target.Id,c.TargetInterval+1,true);
-                Diagnostics.Replaced++;
+                Diagnostics.Replaced++; if(far) Diagnostics.FarReplacements++; else Diagnostics.StuckReplacements++;
             }
         }
         if(c.MapSpawns && w is IMapSpawnWorld maps)
